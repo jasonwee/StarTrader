@@ -29,8 +29,8 @@ PATIENCE = 30
 DJI = ['MMM', 'AXP', 'AAPL', 'BA', 'CAT', 'CVX', 'CSCO', 'KO', 'DIS', 'XOM', 'GE', 'GS', 'HD', 'IBM', 'INTC', 'JNJ',
        'JPM', 'MCD', 'MRK', 'MSFT', 'NKE', 'PFE', 'PG', 'UTX', 'UNH', 'VZ', 'WMT']
 
-DJI_N = ['3M', 'American Express', 'Apple', 'Boeing', 'Caterpillar', 'Chevron', 'Cisco Systems', 'Coca-Cola', 'Disney'
-    , 'ExxonMobil', 'General Electric', 'Goldman Sachs', 'Home Depot', 'IBM', 'Intel', 'Johnson & Johnson',
+DJI_N = ['3M', 'American Express', 'Apple', 'Boeing', 'Caterpillar', 'Chevron', 'Cisco Systems', 'Coca-Cola', 'Disney',
+         'ExxonMobil', 'General Electric', 'Goldman Sachs', 'Home Depot', 'IBM', 'Intel', 'Johnson & Johnson',
          'JPMorgan Chase', 'McDonalds', 'Merck', 'Microsoft', 'NIKE', 'Pfizer', 'Procter & Gamble',
          'United Technologies', 'UnitedHealth Group', 'Verizon Communications', 'Wal Mart']
 
@@ -48,7 +48,7 @@ class Trading:
 
     def generate_signals(self, predicted_tomorrow_close):
         """
-        Generate trade signla from the prediction of the LSTM model
+        Generate trade signal from the prediction of the LSTM model
         :param predicted_tomorrow_close:
         :return:
         """
@@ -60,11 +60,9 @@ class Trading:
 
         for s in self.stock_price.columns:
             for d in next_day_returns.index:
-                if predicted_tomorrow_close[s].loc[d] > self.stock_price[s].loc[d] and next_day_returns[s].loc[
-                    d] > 0 and predicted_next_day_returns[s].loc[d] > 0:
+                if predicted_tomorrow_close[s].loc[d] > self.stock_price[s].loc[d] and next_day_returns[s].loc[d] > 0 and predicted_next_day_returns[s].loc[d] > 0:
                     signals[s].loc[d] = 2
-                elif predicted_tomorrow_close[s].loc[d] < self.stock_price[s].loc[d] and next_day_returns[s].loc[
-                    d] < 0 and predicted_next_day_returns[s].loc[d] < 0:
+                elif predicted_tomorrow_close[s].loc[d] < self.stock_price[s].loc[d] and next_day_returns[s].loc[d] < 0 and predicted_next_day_returns[s].loc[d] < 0:
                     signals[s].loc[d] = -2
                 elif predicted_tomorrow_close[s].loc[d] > self.stock_price[s].loc[d]:
                     signals[s].loc[d] = 2
@@ -93,8 +91,7 @@ class Trading:
         num_share = min(abs(int(sig)), self.state[idx + 1])
         commission = dp.Trading.commission(num_share, self.stock_price.loc[day][stock])
         # Calculate slipped price. Though, at max trading volume of 10 shares, there's hardly any slippage
-        transacted_price = dp.Trading.slippage_price(self.stock_price.loc[day][stock], -num_share,
-                                                     self.stock_volume.loc[day][stock])
+        transacted_price = dp.Trading.slippage_price(self.stock_price.loc[day][stock], -num_share, self.stock_volume.loc[day][stock])
 
         # If there is existing stock holding
         if self.state[idx + 1] > 0:
@@ -106,7 +103,6 @@ class Trading:
             # Reset transacted buy price record to 0.0 if there is no more stock holding
             if self.state[idx + 1] == 0.0:
                 self.buy_price[idx] = 0.0
-
         else:
             pass
 
@@ -136,8 +132,7 @@ class Trading:
             previous_buy_price = self.buy_price[idx]
             additional_unit = min(available_unit, int(sig))
             new_holding = existing_unit + additional_unit
-            self.buy_price[idx] = ((existing_unit * previous_buy_price) + (
-            self.stock_price.loc[day][stock] * additional_unit)) / new_holding
+            self.buy_price[idx] = ((existing_unit * previous_buy_price) + (self.stock_price.loc[day][stock] * additional_unit)) / new_holding
         # if there is no existing stock holding, simply record the current buy price
         elif self.state[idx + 2] == 0.0:
             self.buy_price[idx] = self.stock_price.loc[day][stock]
@@ -180,8 +175,7 @@ class Trading:
             for idx, sig in enumerate(buy_stocks):
                 self._buy(buy_stocks.index[idx], sig, d)
 
-            self.unrealized_pnl = np.sum(np.array(self.stock_price.loc[d] - self.buy_price) * np.array(
-                self.state[2:]))
+            self.unrealized_pnl = np.sum(np.array(self.stock_price.loc[d] - self.buy_price) * np.array(self.state[2:]))
 
             # Current state space
             self.state = [self.state[0]] + [self.unrealized_pnl] + list(self.state[2:])
@@ -199,8 +193,7 @@ class Trading:
             # Update total asset statement
             self.total_asset = np.append(self.total_asset, total_asset_ending)
 
-        trading_book = pd.DataFrame(index=self.test_set.index,
-                                    columns=["Cash balance", "Portfolio value", "Total asset", "Returns", "CumReturns"])
+        trading_book = pd.DataFrame(index=self.test_set.index, columns=["Cash balance", "Portfolio value", "Total asset", "Returns", "CumReturns"])
         trading_book["Cash balance"] = self.acc_balance
         trading_book["Portfolio value"] = self.portfolio_asset
         trading_book["Total asset"] = self.total_asset
