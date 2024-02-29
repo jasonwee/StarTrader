@@ -126,7 +126,7 @@ Linux Ubuntu 16.04 & Windows 10 Pro
 
    gym/envs/
 	
-6. Replace the ```__init__.py``` file in the following folder with the ```__ini__.py``` provided in this repository: 
+6. Replace the ```__init__.py``` file in the following folder with the ```__init__.py``` provided in this repository:
 
    ```gym/envs/__init__.py```
   
