@@ -83,7 +83,7 @@ Linux Ubuntu 16.04 & Windows 10 Pro
 
    ```brew install cmake openmpi```
 
-2. Activate environemnt and install gym under this environment
+2. Activate environment and install gym under this environment
  
    ```pip install gym```
 
@@ -183,8 +183,8 @@ Linux Ubuntu 16.04 & Windows 10 Pro
       
       ```python compare.py```
 
-## Special intructions: 
-1. Depends on machine configuration, the following intallation maybe necessary: 
+## Special instructions:
+1. Depends on machine configuration, the following installation maybe necessary:
 
    ```pip3 install -U numpy```<br /> 
    ```pip3 install opencv-python```<br />
