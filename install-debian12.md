@@ -15,7 +15,7 @@ sudo systemctl restart docker
 1. start the container
 replace the mount volume with the path of this repository
 ```
-docker run --rm --gpus all -it -v <host path to the StarTrader>:/app/StarTrader debian:12
+$ docker run --rm --gpus all -it -v <host path to the StarTrader>:/app/StarTrader debian:12
 ```
 
 2. this step and the subsequent steps, all done in container. installation build packages
