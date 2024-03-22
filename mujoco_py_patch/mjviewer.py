@@ -4,10 +4,8 @@ import logging
 from threading import Lock
 import os
 
-import glfw
-from mujoco_py import mjcore
-from mujoco_py.mjconstants import *
-from mujoco_py.mjlib import mjlib
+from . import mjcore, mjconstants, glfw
+from .mjlib import mjlib
 import numpy as np
 import OpenGL.GL as gl
 
@@ -22,10 +20,17 @@ def _glfw_error_callback(e, d):
 
 class MjViewer(object):
 
-    def __init__(self, visible=True, init_width=500, init_height=500):
+    def __init__(self, visible=True, init_width=500, init_height=500, go_fast=False):
+        """
+        Set go_fast=True to run at full speed instead of waiting for the 60 Hz monitor refresh
+        init_width and init_height set window size. On Mac Retina displays, they are in nominal
+        pixels but .render returns an array of device pixels, so the array will be twice as big
+        as you expect.
+        """
         self.visible = visible
         self.init_width = init_width
         self.init_height = init_height
+        self.go_fast = not visible or go_fast
 
         self.last_render_time = 0
         self.objects = mjcore.MJVOBJECTS()
@@ -52,6 +57,7 @@ class MjViewer(object):
         self._last_mouse_y = 0
 
     def set_model(self, model):
+        glfw.make_context_current(self.window)
         self.model = model
         if model:
             self.data = model.data
@@ -67,6 +73,7 @@ class MjViewer(object):
             self.autoscale()
 
     def autoscale(self):
+        glfw.make_context_current(self.window)
         self.cam.lookat[0] = self.model.stat.center[0]
         self.cam.lookat[1] = self.model.stat.center[1]
         self.cam.lookat[2] = self.model.stat.center[2]
@@ -84,6 +91,7 @@ class MjViewer(object):
     def render(self):
         if not self.data:
             return
+        glfw.make_context_current(self.window)
         self.gui_lock.acquire()
         rect = self.get_rect()
         arr = (ctypes.c_double*3)(0, 0, 0)
@@ -115,6 +123,7 @@ class MjViewer(object):
         - width is the width of the image
         - height is the height of the image
         """
+        glfw.make_context_current(self.window)
         width, height = self.get_dimensions()
         gl.glReadBuffer(gl.GL_BACK)
         data = gl.glReadPixels(0, 0, width, height, gl.GL_RGB, gl.GL_UNSIGNED_BYTE)
@@ -161,6 +170,7 @@ class MjViewer(object):
         window = None
         if self.visible:
             glfw.window_hint(glfw.SAMPLES, 4)
+            glfw.window_hint(glfw.VISIBLE, 1);
         else:
             glfw.window_hint(glfw.VISIBLE, 0);
 
@@ -190,6 +200,10 @@ class MjViewer(object):
         # Make the window's context current
         glfw.make_context_current(window)
 
+        if self.go_fast:
+            # Let's go faster than 60 Hz
+            glfw.swap_interval(0)
+
         self._init_framebuffer_object()
 
         width, height = glfw.get_framebuffer_size(window)
@@ -217,7 +231,6 @@ class MjViewer(object):
         glfw.set_scroll_callback(window, self.handle_scroll)
 
     def handle_mouse_move(self, window, xpos, ypos):
-
         # no buttons down: nothing to do
         if not self._button_left_pressed \
                 and not self._button_middle_pressed \
@@ -244,11 +257,11 @@ class MjViewer(object):
         # determine action based on mouse button
         action = None
         if self._button_right_pressed:
-            action = MOUSE_MOVE_H if mod_shift else MOUSE_MOVE_V
+            action = mjconstants.MOUSE_MOVE_H if mod_shift else mjconstants.MOUSE_MOVE_V
         elif self._button_left_pressed:
-            action = MOUSE_ROTATE_H if mod_shift else MOUSE_ROTATE_V
+            action = mjconstants.MOUSE_ROTATE_H if mod_shift else mjconstants.MOUSE_ROTATE_V
         else:
-            action = MOUSE_ZOOM
+            action = mjconstants.MOUSE_ZOOM
 
         self.gui_lock.acquire()
 
@@ -293,13 +306,14 @@ class MjViewer(object):
 
         # scroll
         self.gui_lock.acquire()
-        mjlib.mjv_moveCamera(MOUSE_ZOOM, 0, (-20*y_offset), byref(self.cam), width, height)
+        mjlib.mjv_moveCamera(mjconstants.MOUSE_ZOOM, 0, (-20*y_offset), byref(self.cam), width, height)
         self.gui_lock.release()
 
     def should_stop(self):
         return glfw.window_should_close(self.window)
 
     def loop_once(self):
+        glfw.make_context_current(self.window)
         self.render()
         # Swap front and back buffers
         glfw.swap_buffers(self.window)
@@ -307,7 +321,9 @@ class MjViewer(object):
         glfw.poll_events()
 
     def finish(self):
-        glfw.terminate()
+        glfw.make_context_current(self.window)
+        glfw.destroy_window(self.window)
+
         if gl.glIsFramebuffer(self._fbo):
             gl.glDeleteFramebuffers(int(self._fbo))
         if gl.glIsRenderbuffer(self._rbo):
