@@ -2,6 +2,9 @@ import tensorflow.compat.v1 as tf
 import numpy as np
 from baselines.common.tf_util import get_session
 
+# https://stackoverflow.com/questions/56561734/runtimeerror-tf-placeholder-is-not-compatible-with-eager-execution
+tf.compat.v1.disable_eager_execution()
+
 class RunningMeanStd(object):
     # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
     def __init__(self, epsilon=1e-4, shape=()):
