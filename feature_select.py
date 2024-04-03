@@ -7,7 +7,11 @@ from itertools import chain
 from sklearn.cluster import KMeans
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
-from mpl_finance import candlestick_ohlc
+
+#from mpl_finance import candlestick_ohlc
+# https://stackoverflow.com/questions/52655847/modulenotfounderror-no-module-named-mpl-finance
+from mplfinance.original_flavor import candlestick_ohlc
+
 import copy
 from matplotlib.dates import (DateFormatter, WeekdayLocator, DayLocator, MONDAY)
 from sklearn.model_selection import train_test_split
