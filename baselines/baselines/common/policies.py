@@ -1,4 +1,4 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from baselines.common import tf_util
 from baselines.a2c.utils import fc
 from baselines.common.distributions import make_pdtype
@@ -40,8 +40,8 @@ class PolicyWithValue(object):
 
         vf_latent = vf_latent if vf_latent is not None else latent
 
-        vf_latent = tf.compat.v1.layers.flatten(vf_latent)
-        latent = tf.compat.v1.layers.flatten(latent)
+        vf_latent = tf.layers.flatten(vf_latent)
+        latent = tf.layers.flatten(latent)
 
         # Based on the action space, will select what probability distribution type
         self.pdtype = make_pdtype(env.action_space)
@@ -138,7 +138,7 @@ def build_policy(env, policy_network, value_network=None,  normalize_observation
 
         encoded_x = encode_observation(ob_space, encoded_x)
 
-        with tf.compat.v1.variable_scope('pi', reuse=tf.compat.v1.AUTO_REUSE):
+        with tf.variable_scope('pi', reuse=tf.AUTO_REUSE):
             policy_latent = policy_network(encoded_x)
             if isinstance(policy_latent, tuple):
                 policy_latent, recurrent_tensors = policy_latent
@@ -161,7 +161,7 @@ def build_policy(env, policy_network, value_network=None,  normalize_observation
             else:
                 assert callable(_v_net)
 
-            with tf.compat.v1.variable_scope('vf', reuse=tf.compat.v1.AUTO_REUSE):
+            with tf.variable_scope('vf', reuse=tf.AUTO_REUSE):
                 # TODO recurrent architectures are not supported with value_network=copy yet
                 vf_latent = _v_net(encoded_x)
 
