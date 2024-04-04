@@ -222,7 +222,7 @@ class FeatureSelector():
                                               'corr_value': corr_values})
 
             # Add to dataframe
-            record_collinear = record_collinear.append(temp_df, ignore_index=True)
+            record_collinear = record_collinear._append(temp_df, ignore_index=True)
 
         self.record_collinear = record_collinear
         self.ops['collinear'] = to_drop
@@ -296,10 +296,10 @@ class FeatureSelector():
         for _ in range(n_iterations):
 
             if task == 'classification':
-                model = lgb.LGBMClassifier(n_estimators=1000, learning_rate=0.05, verbose=-1)
+                model = lgb.LGBMClassifier(n_estimators=1000, learning_rate=0.05, verbose=0, early_stopping_rounds=100)
 
             elif task == 'regression':
-                model = lgb.LGBMRegressor(n_estimators=1000, learning_rate=0.05, verbose=-1)
+                model = lgb.LGBMRegressor(n_estimators=1000, learning_rate=0.05, verbose=0, early_stopping_rounds=100)
 
             else:
                 raise ValueError('Task must be either "classification" or "regression"')
@@ -310,10 +310,11 @@ class FeatureSelector():
                 train_features, valid_features, train_labels, valid_labels = train_test_split(features, labels,
                                                                                               test_size=0.15)
                 # Train the model with early stopping
+                #model.fit(train_features, train_labels, eval_metric=eval_metric,
+                #          eval_set=[(valid_features, valid_labels)],
+                #          early_stopping_rounds=100, verbose=0)
                 model.fit(train_features, train_labels, eval_metric=eval_metric,
-                          eval_set=[(valid_features, valid_labels)],
-                          early_stopping_rounds=100, verbose=0)
-
+                          eval_set=[(valid_features, valid_labels)])
                 # Clean up memory
                 gc.enable()
                 del train_features, train_labels, valid_features, valid_labels
