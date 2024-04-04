@@ -4,7 +4,8 @@ from functools import reduce
 import functools
 import numpy as np
 import tensorflow as tf
-import tensorflow.contrib as tc
+# https://stackoverflow.com/questions/68114618/migrate-tf-contrib-layers-apply-regularization-to-tensorflow-2-0
+#import tensorflow.contrib as tc
 
 from baselines import logger
 from baselines.common.mpi_adam import MpiAdam
@@ -193,11 +194,11 @@ class DDPG(object):
             for var in critic_reg_vars:
                 logger.info('  regularizing: {}'.format(var.name))
             logger.info('  applying l2 regularization with {}'.format(self.critic_l2_reg))
-            critic_reg = tc.layers.apply_regularization(
-                tc.layers.l2_regularizer(self.critic_l2_reg),
-                weights_list=critic_reg_vars
-            )
-            self.critic_loss += critic_reg
+            #critic_reg = tc.layers.apply_regularization(
+            #    tc.layers.l2_regularizer(self.critic_l2_reg),
+            #    weights_list=critic_reg_vars
+            #)
+            #self.critic_loss += critic_reg
         critic_shapes = [var.get_shape().as_list() for var in self.critic.trainable_vars]
         critic_nb_params = sum([reduce(lambda x, y: x * y, shape) for shape in critic_shapes])
         logger.info('  critic shapes: {}'.format(critic_shapes))
