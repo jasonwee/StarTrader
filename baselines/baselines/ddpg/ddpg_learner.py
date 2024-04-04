@@ -3,7 +3,7 @@ from functools import reduce
 
 import functools
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 # https://stackoverflow.com/questions/68114618/migrate-tf-contrib-layers-apply-regularization-to-tensorflow-2-0
 #import tensorflow.contrib as tc
 
@@ -12,6 +12,10 @@ from baselines.common.mpi_adam import MpiAdam
 import baselines.common.tf_util as U
 from baselines.common.mpi_running_mean_std import RunningMeanStd
 from baselines.common.tf_util import save_variables, load_variables
+
+tf.compat.v1.disable_eager_execution()
+
+
 try:
     from mpi4py import MPI
 except ImportError:
