@@ -2,8 +2,62 @@ import unittest
 import pytest
 import pandas as pd
 
-from data_preprocessing_py3 import MathCalc
+from data_preprocessing_py3 import MathCalc, DataRetrieval, Trading
 from datetime import datetime
+
+
+class DataRetrievalTest(unittest.TestCase):
+
+    @pytest.mark.task(taskno=1)
+    def test_get_all(self):
+        DJI = ['MMM', 'AXP', 'AAPL', 'BA', 'CAT', 'CVX', 'CSCO', 'KO', 'DIS', 'XOM', 'GE', 'GS', 'HD', 'IBM', 'INTC', 'JNJ', 'JPM', 'MCD', 'MRK', 'MSFT', 'NKE', 'PFE', 'PG', 'UTX', 'UNH', 'VZ', 'WMT']
+        START_TEST = datetime(2017, 2, 12)
+        END_TEST = datetime(2019, 2, 22)
+        dataset = DataRetrieval()
+        dow_stocks_train, dow_stocks_test = dataset.get_all()
+        self.assertEqual(dow_stocks_train.sum().MMM, 203249.069617)
+        self.assertEqual(dow_stocks_test.sum().MMM, 103620.53754699999)
+
+    @pytest.mark.task(taskno=2)
+    def test_technical_indicators_df(self):
+        DJI = ['MMM', 'AXP', 'AAPL', 'BA', 'CAT', 'CVX', 'CSCO', 'KO', 'DIS', 'XOM', 'GE', 'GS', 'HD', 'IBM', 'INTC', 'JNJ', 'JPM', 'MCD', 'MRK', 'MSFT', 'NKE', 'PFE', 'PG', 'UTX', 'UNH', 'VZ', 'WMT']
+        START_TEST = datetime(2017, 2, 12)
+        END_TEST = datetime(2019, 2, 22)
+
+        daily_data = pd.DataFrame()
+        daily_data['Returns'] = pd.Series(data={'a': 1, 'b': 2, 'c': 3}, index=['a', 'b', 'c'])
+        daily_data['Open'] = 10
+        daily_data['Close'] = 12
+        daily_data['High'] = 13
+        daily_data['Low'] = 9
+        daily_data['Volume'] = 100
+
+        dataset = DataRetrieval()
+        # TODO require ta-lib
+        #result = dataset.technical_indicators_df(daily_data)
+
+    @pytest.mark.task(taskno=3)
+    def test_label(self):
+
+        df = pd.DataFrame()
+        df['Returns'] = pd.Series(data={'a': 1, 'b': 2, 'c': 3}, index=['a', 'b', 'c'])
+
+        dataset = DataRetrieval()
+        result = dataset.label(df, 2)
+        self.assertEqual('{"a":1,"b":1,"c":1}', result.to_json())
+
+    @pytest.mark.task(taskno=4)
+    def test_preprocessing(self):
+        dataset = DataRetrieval()
+        # TODO require ta-lib
+        #result = dataset.preprocessing('MMM')
+        #print(type(result))
+        #print(result)
+
+    @pytest.mark.task(taskno=5)
+    def test_get_feature_dataframe(self):
+        dataset = DataRetrieval()
+        # TODO require ta-lib
 
 class MathCalcTest(unittest.TestCase):
 
@@ -190,3 +244,46 @@ class MathCalcTest(unittest.TestCase):
         
         self.assertEqual(actual_result.to_json(), expected, msg="check output")
 
+
+    @pytest.mark.task(taskno=13)
+    def test_colrow(self):
+        input_data = [ 10 ]
+
+        result_data = [(0, 5)]
+
+        for variant, (item, expected) in enumerate(zip(input_data, result_data), start=1):
+            with self.subTest(f'variation #{variant}', item=item, expected=expected):
+                actual_result = MathCalc.colrow(item)
+                error_message = (f'Called MathCalc.colrow({item}). '
+                                 f'The function returned {actual_result}, but the '
+                                 f'tests expected {expected} as the tuple[int, int].')
+
+                self.assertEqual(actual_result, expected, msg=error_message)
+
+class TradingTest(unittest.TestCase):
+
+    @pytest.mark.task(taskno=1)
+    def test_init(self):
+        DJI = ['MMM', 'AXP', 'AAPL', 'BA', 'CAT', 'CVX', 'CSCO', 'KO', 'DIS', 'XOM', 'GE', 'GS', 'HD', 'IBM', 'INTC', 'JNJ', 'JPM', 'MCD', 'MRK', 'MSFT', 'NKE', 'PFE', 'PG', 'UTX', 'UNH', 'VZ', 'WMT']
+        START_TEST = datetime(2017, 2, 12)
+        END_TEST = datetime(2019, 2, 22)
+        dataset = DataRetrieval()
+        dow_stocks_train, dow_stocks_test = dataset.get_all()
+        dow_stock_volume = dataset.components_df_v[DJI]
+        tested = Trading(dow_stocks_train, dow_stocks_test, dow_stock_volume.loc[START_TEST:END_TEST])
+        self.assertTrue('_dow_stocks_test' in tested.__dict__)
+        self.assertTrue('dow_stocks_train' in tested.__dict__)
+        self.assertTrue('daily_v' in tested.__dict__)
+        self.assertTrue('dow_remaining' in tested.__dict__)
+
+    @pytest.mark.task(taskno=2)
+    def test_find_non_correlate_stocks(self):
+        pass
+
+    @pytest.mark.task(taskno=3)
+    def test_commission(self):
+        pass
+
+    @pytest.mark.task(taskno=4)
+    def test_slippage_price(self):
+        pass
