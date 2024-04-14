@@ -1,6 +1,9 @@
 
 import pandas as pd
 import numpy as np
+import random
+import logging
+#import talib as tb
 
 from datetime import datetime, timedelta
 #from feature_select import FeatureSelector
@@ -26,17 +29,22 @@ CONTEXT_DATA_N = ['S&P 500', 'Dow Jones Industrial Average', 'NASDAQ Composite',
  'Invesco QQQ Trust', 'CBOE Volatility Index', 'SPDR Gold Shares', 'Treasury Yield 30 Years',
  'CBOE Interest Rate 10 Year T Note', 'iShares 1-3 Year Treasury Bond ETF', 'iShares Short Treasury Bond ETF']
 
+random.seed(633)
+RANDOM_STOCK = random.sample(DJI, 1)
 
 #13 WEEK TREASURY BILL (^IRX)
 # https://finance.yahoo.com/quote/%5EIRX?p=^IRX&.tsrc=fin-srch
 RISK_FREE_RATE = ((1+0.02383)**(1.0/252))-1 # Assuming 1.43% risk free rate divided by 360 to get the daily risk free rate.
+
+logger = logging.getLogger(__name__)
+
 
 class DataRetrieval:
 
     def __init__(self):
         self._dji_components_data()
 
-    def _get_daily_data(self, symbol):
+    def _get_daily_data(self, symbol : str) -> pd.core.frame.DataFrame:
 
         daily_price = pd.read_csv("{}{}{}".format('./data/', symbol, '.csv'), index_col='Date', parse_dates=True)
         
@@ -55,7 +63,8 @@ class DataRetrieval:
             #print((DJI + CONTEXT_DATA))          # ['MMM', 'AXP', 'AAPL', 'BA', 'CAT', 'CVX', 'CSCO', 'KO', 'DIS', 'XOM', 'GE', 'GS', 'HD', 'IBM', 'INTC', 'JNJ', 'JPM', 'MCD', 'MRK', 'MSFT', 'NKE', 'PFE', 'PG', 'UTX', 'UNH', 'VZ', 'WMT', '^GSPC', '^DJI', '^IXIC', '^RUT', 'SPY', 'QQQ', '^VIX', 'GLD', '^TYX', '^TNX', 'SHY', 'SHV'] 
             #print((DJI + CONTEXT_DATA).index(i)) # 0
             #print((DJI + CONTEXT_DATA_N)[(DJI + CONTEXT_DATA).index(i)])  # MMM
-            print("Loading {}'s historical data".format((DJI + CONTEXT_DATA_N)[(DJI + CONTEXT_DATA).index(i)]))
+            #print("Loading {}'s historical data".format((DJI + CONTEXT_DATA_N)[(DJI + CONTEXT_DATA).index(i)]))
+            logger.info("Loading {}'s historical data".format((DJI + CONTEXT_DATA_N)[(DJI + CONTEXT_DATA).index(i)]))
             daily_price = self._get_daily_data(i)
             #print(daily_price.index)
             # DatetimeIndex(['2008-12-31', '2009-01-02', '2009-01-05', '2009-01-06',
@@ -81,7 +90,6 @@ class DataRetrieval:
                 self.components_df_h[i] = daily_price["High"]
                 self.components_df_l[i] = daily_price["Low"]
                 self.components_df_v[i] = daily_price["Volume"]
-            break
 
     def get_dailyprice_df(self):
         """
@@ -91,7 +99,7 @@ class DataRetrieval:
         self.dow_stocks_train = self.components_df_c.loc[START_TRAIN:END_TRAIN][DJI]
 
 
-    def get_all(self):
+    def get_all(self) -> tuple[pd.core.frame.DataFrame, pd.core.frame.DataFrame]:
         """
         Response to external request to get all stock price in train and test set.
         """
@@ -141,7 +149,7 @@ class DataRetrieval:
 
         self.ta = ta
 
-    def label(self, df, seq_length):
+    def label(self, df : pd.core.frame.DataFrame, seq_length):
         return (df['Returns'] > 0).astype(int)
 
     def preprocessing(self, symbol):
@@ -359,3 +367,112 @@ class MathCalc:
         kpi.loc['Sortino ratio', 0] = MathCalc.sortino_ratio(portfolio['Returns'])
 
         return kpi
+
+    @staticmethod
+    def colrow(i : int) -> tuple[int, int]:
+        """
+        This function calculate the row and columns index number based on the
+        total number of subplots in the plot.
+
+        Return:
+             row: axis's row index number
+             col: axis's column index number
+        """
+
+        # Do odd/even check to get col index number
+        if i % 2 == 0:
+            col = 0
+        else:
+            col = 1
+        # Do floor division to get row index number
+        row = i // 2
+
+        return col, row
+
+
+class Trading:
+    """
+    This class performs trading and all other functions related to trading
+    """
+
+    def __init__(self, dow_stocks_train : pd.core.frame.DataFrame, dow_stocks_test : pd.core.frame.DataFrame, dow_stocks_volume : pd.core.frame.DataFrame):
+        self._dow_stocks_test = dow_stocks_test
+        self.dow_stocks_train = dow_stocks_train
+        self.daily_v = dow_stocks_volume
+        self.remaining_stocks()
+
+    def remaining_stocks(self):
+        """
+        This function finds out the remaining Dow component stocks after the
+        selected stocks are taken.
+        """
+        dow_remaining = self._dow_stocks_test.drop(RANDOM_STOCK, axis=1)
+        self.dow_remaining = [i for i in dow_remaining.columns]
+
+    def find_non_correlate_stocks(self, num_non_corr_stocks):
+        """
+        This function performs trade with a portfolio starting with the number
+        of stocks specified and find the required number of most uncorrelated
+        stocks. Only the train set data is used to perform this task to avoid
+        look ahead bias.
+        """
+        add_stocks = (min(num_non_corr_stocks, len(DJI))) - 1
+        # Get the returns of the long only returns of all Dow component stocks during the pre-trading period.
+        single_component_fund = SINGLE_TRADING_FUND
+        share_distribution = single_component_fund / self.dow_stocks_train[RANDOM_STOCK].iloc[0]
+        dow_stocks_values = self.dow_stocks_train[RANDOM_STOCK].mul(share_distribution, axis=1)
+        portfolio_longonly_train = self.construct_book(dow_stocks_values, True)
+
+        # find the most uncorrelated stocks with the one randomly selected
+        # stock arranged from most uncorrelated to most correlated
+        remaining_corr = self.stocks_corr(portfolio_longonly_train)
+
+        # Assemble the non-correlate stocks
+        ncs = RANDOM_STOCK
+
+        adding_stocks = [i for i in remaining_corr[0:add_stocks].index]
+
+        # add stocks to the random portfolio stock
+        ncs = ncs + adding_stocks
+
+        # Do buy and hold trade with a simple equally weighted portfolio of the 5 non-correlate stocks
+        portfolio_values, portfolio_nc_5, kpi_nc_5 = self.diversified_trade(ncs, self.dow_stocks_train[ncs])
+        return portfolio_nc_5, kpi_nc_5, ncs
+
+    @staticmethod
+    def commission(num_share, share_value):
+        """
+        This function computes commission fee of every trade
+        https://www.interactivebrokers.com/en/index.php?f=1590&p=stocks1
+        """
+        trade_value = num_share * share_value
+        max_comm_fee = 0.01 * trade_value
+        comm_fee = 0.005 * num_share
+
+        if max_comm_fee < comm_fee:
+            comm_fee = max_comm_fee
+        elif comm_fee <= max_comm_fee and comm_fee > 1.0:
+            pass
+        elif comm_fee < 1.0 and num_share > 0:
+            comm_fee = 1.0
+        elif num_share == 0:
+            comm_fee = 0.0
+
+        return comm_fee
+
+    @staticmethod
+    def slippage_price(price, stock_quantity, day_volume):
+        """
+        This function performs slippage price calculation using Zipline's volume share model
+        https://www.zipline.io/_modules/zipline/finance/slippage.html
+        """
+
+        volumeShare = stock_quantity / float(day_volume)
+        impactPct = volumeShare ** 2 * PRICE_IMPACT
+
+        if stock_quantity > 0:
+            slipped_price = price * (1 + impactPct)
+        else:
+            slipped_price = price * (1 - impactPct)
+
+        return slipped_price
